@@ -1,22 +1,38 @@
-name: CI/CD Pipeline
+name: Build and Deploy to SmarterASP.net FTP
 
 on:
   push:
     branches:
-      - main
+      - main  # Trigger on pushes to main branch
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-    - name: Set up .NET
+
+    - name: Setup .NET 8.0 SDK
       uses: actions/setup-dotnet@v3
       with:
-        dotnet-version: '7.0.x'
-    - name: Build
-      run: dotnet build --configuration Release
-    - name: Publish
-      run: dotnet publish -c Release -o ./publish
-    # Add deploy step if needed (see earlier examples)
+        dotnet-version: '8.0'
+
+    - name: Restore dependencies
+      run: dotnet restore ecom.sln
+
+    - name: Build project
+      run: dotnet build ecom.sln --configuration Release --no-restore
+
+    - name: Publish project
+      run: dotnet publish ecom.sln --configuration Release --output ./publish --no-build
+
+    - name: Deploy via FTP to SmarterASP.net
+      uses: SamKirkland/FTP-Deploy-Action@v4
+      with:
+        server: ftp://win1020.site4now.net
+        username: ${{ secrets.FTP_USERNAME }}
+        password: ${{ secrets.FTP_PASSWORD }}
+        local-dir: ./publish
+        server-dir: /ecom
+        passive: true
