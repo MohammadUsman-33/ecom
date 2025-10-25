@@ -27,6 +27,40 @@ jobs:
     - name: Publish project
       run: dotnet publish ecom/ecom.csproj --configuration Release --output ./publish/
       
+      ## Step 1: Upload app_offline.htm to take the app offline
+    - name: Upload app_offline.htm to stop app
+      run: echo '<html><body><h1>Maintenance, please check back soon.</h1></body></html>' > app_offline.htm
+    - name: Deploy app_offline.htm
+      uses: SamKirkland/FTP-Deploy-Action@v4.3.6
+      with:
+          server: win1020.site4now.net
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./app_offline.htm
+          server-dir: /ecom/
+
+      # Step 2: Deploy published app files
+    - name: Deploy published files
+      uses: SamKirkland/FTP-Deploy-Action@v4.3.6
+      with:
+        server: win1020.site4now.net
+        username: ${{ secrets.FTP_USERNAME }}
+        password: ${{ secrets.FTP_PASSWORD }}
+        local-dir: ./publish/
+        server-dir: /ecom/
+
+    # Step 3: Remove app_offline.htm after deployment (bring app online)
+    - name: Remove app_offline.htm
+      run: rm -f app_offline.htm
+    - name: Remove app_offline.htm from server
+      uses: SamKirkland/FTP-Deploy-Action@v4.3.6
+      with:
+        server: win1020.site4now.net
+        username: ${{ secrets.FTP_USERNAME }}
+        password: ${{ secrets.FTP_PASSWORD }}
+        local-dir: ./         # an empty local folder or one without app_offline.htm
+        server-dir: /ecom/
+        dangerous-clean-slate: true   # deletes files on server that are not in local-dir, use with caution
     - name: Deploy via FTP to SmarterASP.net
       uses: SamKirkland/FTP-Deploy-Action@v4.3.6
       with:
