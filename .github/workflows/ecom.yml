@@ -3,65 +3,65 @@ name: Build and Deploy to SmarterASP.net FTP
 on:
   push:
     branches:
-      - master  # Trigger on pushes to main branch
+      - master  # Trigger on pushes to master branch
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Setup .NET 8.0 SDK
-      uses: actions/setup-dotnet@v3
-      with:
-        dotnet-version: '8.0'
+      - name: Setup .NET 8.0 SDK
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '8.0'
 
-    - name: Restore dependencies
-      run: dotnet restore ecom.sln
+      - name: Restore dependencies
+        run: dotnet restore ecom.sln
 
-    - name: Build project
-      run: dotnet build ecom.sln --configuration Release --no-restore
+      - name: Build project
+        run: dotnet build ecom.sln --configuration Release --no-restore
 
-    - name: Publish project
-      run: dotnet publish ecom/ecom.csproj --configuration Release --output ./publish/
+      - name: Publish project
+        run: dotnet publish ecom/ecom.csproj --configuration Release --output ./publish/
 
-    # Step 1: Upload app_offline.htm to take app offline
-    - name: Create app_offline folder and file
-      run: |
-        mkdir -p app_offline
-        echo '<html><body><h1>Maintenance, please check back soon.</h1></body></html>' > app_offline/app_offline.htm
-    
-    - name: Upload app_offline.htm to take app offline
-      uses: SamKirkland/FTP-Deploy-Action@v4.3.6
-      with:
-        server: win1020.site4now.net
-        username: ${{ secrets.FTP_USERNAME }}
-        password: ${{ secrets.FTP_PASSWORD }}
-        local-dir: ./app_offline/
-        server-dir: /ecom/
-    
-    # Step 2: Deploy published files
-    - name: Deploy published files
-      uses: SamKirkland/FTP-Deploy-Action@v4.3.6
-      with:
-        server: win1020.site4now.net
-        username: ${{ secrets.FTP_USERNAME }}
-        password: ${{ secrets.FTP_PASSWORD }}
-        local-dir: ./publish/
-        server-dir: /ecom/
-    
-    # Step 3: Remove app_offline.htm after deployment (bring app online)
-    - name: Remove app_offline.htm folder locally
-      run: rm -rf app_offline
-    
-    - name: Remove app_offline.htm from server
-      uses: SamKirkland/FTP-Deploy-Action@v4.3.6
-      with:
-        server: win1020.site4now.net
-        username: ${{ secrets.FTP_USERNAME }}
-        password: ${{ secrets.FTP_PASSWORD }}
-        local-dir: ./empty_folder/ # Prepare this folder to be empty in your repo or add a step to create it empty
-        server-dir: /ecom/
-        dangerous-clean-slate: true
+      # Step 1: Upload app_offline.htm to take the app offline
+      - name: Create app_offline folder and file
+        run: |
+          mkdir -p app_offline
+          echo '<html><body><h1>Maintenance, please check back soon.</h1></body></html>' > app_offline/app_offline.htm
+
+      - name: Upload app_offline.htm to take app offline
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.6
+        with:
+          server: win1020.site4now.net
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./app_offline/
+          server-dir: /ecom/
+
+      # Step 2: Deploy published app files
+      - name: Deploy published files
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.6
+        with:
+          server: win1020.site4now.net
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./publish/
+          server-dir: /ecom/
+
+      # Step 3: Remove app_offline.htm after deployment (bring app online)
+      - name: Remove app_offline folder locally
+        run: rm -rf app_offline
+
+      - name: Remove app_offline.htm from server
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.6
+        with:
+          server: win1020.site4now.net
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./empty_folder/   # This should be an empty folder you create in repo or via a step
+          server-dir: /ecom/
+          dangerous-clean-slate: true
