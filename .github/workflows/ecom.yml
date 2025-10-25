@@ -28,7 +28,7 @@ jobs:
       run: dotnet publish ecom.sln --configuration Release --output ./publish --no-build
 
     - name: Deploy via FTP to SmarterASP.net
-      uses: SamKirkland/FTP-Deploy-Action@v4
+      uses: SamKirkland/FTP-Deploy-Action@v4.3.6
       with:
         server: ftp://win1020.site4now.net
         username: ${{ secrets.FTP_USERNAME }}
