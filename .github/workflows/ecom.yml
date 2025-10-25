@@ -3,11 +3,17 @@ name: Build and Deploy to SmarterASP.net FTP
 on:
   push:
     branches:
-      - master  # Trigger on pushes to master branch
+      - master
+
+concurrency:
+  group: deploy-smarterasp
+  cancel-in-progress: true
 
 jobs:
-  build-and-deploy:
+  build-publish:
     runs-on: ubuntu-latest
+    outputs:
+      publish-folder: publish
 
     steps:
       - name: Checkout code
@@ -27,11 +33,27 @@ jobs:
       - name: Publish project
         run: dotnet publish ecom/ecom.csproj --configuration Release --output ./publish/
 
-      # Step 1: Upload app_offline.htm to take the app offline
+      - name: Upload publish artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: publish-artifact
+          path: ./publish/
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build-publish
+
+    steps:
+      - name: Download publish artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: publish-artifact
+          path: ./publish/
+
       - name: Create app_offline folder and file
         run: |
           mkdir -p app_offline
-          echo '<html><body><h1>Maintenance, please check back soon.</h1></body></html>' > app_offline/app_offline.htm
+          echo '<html><body><h1>Deployment in progress, please wait...</h1></body></html>' > app_offline/app_offline.htm
 
       - name: Upload app_offline.htm to take app offline
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
@@ -42,7 +64,6 @@ jobs:
           local-dir: ./app_offline/
           server-dir: /ecom/
 
-      # Step 2: Deploy published app files
       - name: Deploy published files
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
@@ -52,16 +73,15 @@ jobs:
           local-dir: ./publish/
           server-dir: /ecom/
 
-      # Step 3: Remove app_offline.htm after deployment (bring app online)
       - name: Remove app_offline folder locally
         run: rm -rf app_offline
 
-      - name: Remove app_offline.htm from server
+      - name: Remove app_offline.htm from server (bring app online)
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
           server: win1020.site4now.net
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./empty_folder/   # This should be an empty folder you create in repo or via a step
+          local-dir: ./empty_folder/   # Prepare an empty folder either in repo or dynamically in previous step
           server-dir: /ecom/
           dangerous-clean-slate: true
