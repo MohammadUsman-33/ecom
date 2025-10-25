@@ -25,8 +25,8 @@ jobs:
       run: dotnet build ecom.sln --configuration Release --no-restore
 
     - name: Publish project
-      run: dotnet publish ecom.csproj --configuration Release --output ./publish --no-build
-
+      run: dotnet publish ecom.sln --configuration Release
+      
     - name: Deploy via FTP to SmarterASP.net
       uses: SamKirkland/FTP-Deploy-Action@v4.3.6
       with:
