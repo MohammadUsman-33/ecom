@@ -3,7 +3,7 @@ name: Build and Deploy to SmarterASP.net FTP
 on:
   push:
     branches:
-      - main  # Trigger on pushes to main branch
+      - master  # Trigger on pushes to main branch
 
 jobs:
   build-and-deploy:
@@ -25,14 +25,14 @@ jobs:
       run: dotnet build ecom.sln --configuration Release --no-restore
 
     - name: Publish project
-      run: dotnet publish ecom.sln --configuration Release --output ./publish --no-build
-
+      run: dotnet publish ecom/ecom.csproj --configuration Release --output ./publish/
+      
     - name: Deploy via FTP to SmarterASP.net
-      uses: SamKirkland/FTP-Deploy-Action@v4
+      uses: SamKirkland/FTP-Deploy-Action@v4.3.6
       with:
-        server: ftp://win1020.site4now.net
+        server: win1020.site4now.net
         username: ${{ secrets.FTP_USERNAME }}
         password: ${{ secrets.FTP_PASSWORD }}
-        local-dir: ./publish
-        server-dir: /ecom
-        passive: true
+        local-dir: ./publish/
+        server-dir: /ecom/
+
