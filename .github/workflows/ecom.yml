@@ -3,7 +3,7 @@ name: Build and Deploy to SmarterASP.net FTP
 on:
   push:
     branches:
-      - main  # Trigger on pushes to main branch
+      - master  # Trigger on pushes to main branch
 
 jobs:
   build-and-deploy:
