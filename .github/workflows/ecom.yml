@@ -5,58 +5,45 @@ on:
     branches:
       - master
 
-concurrency:
-  group: deploy-smarterasp
-  cancel-in-progress: true
-
 jobs:
-  build-publish:
+  build:
     runs-on: ubuntu-latest
     outputs:
-      publish-folder: publish
+      publish-artifact-name: publish-artifact
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup .NET 8.0 SDK
-        uses: actions/setup-dotnet@v3
+      - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0'
 
-      - name: Restore dependencies
-        run: dotnet restore ecom.sln
+      - run: dotnet restore ecom.sln
 
-      - name: Build project
-        run: dotnet build ecom.sln --configuration Release --no-restore
+      - run: dotnet build ecom.sln --configuration Release --no-restore
 
-      - name: Publish project
-        run: dotnet publish ecom/ecom.csproj --configuration Release --output ./publish/
+      - run: dotnet publish ecom/ecom.csproj --configuration Release --output ./publish/
 
-      - name: Upload publish artifact
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
-          name: publish-artifact
+          name: ${{ steps.publish.outputs.artifact-name }}
           path: ./publish/
 
   deploy:
     runs-on: ubuntu-latest
-    needs: build-publish
+    needs: build
 
     steps:
-      - name: Download publish artifact
-        uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4
         with:
           name: publish-artifact
           path: ./publish/
 
-      - name: Create app_offline folder and file
-        run: |
+      - run: |
           mkdir -p app_offline
-          echo '<html><body><h1>Deployment in progress, please wait...</h1></body></html>' > app_offline/app_offline.htm
+          echo '<html><body><h1>Maintenance mode</h1></body></html>' > app_offline/app_offline.htm
 
-      - name: Upload app_offline.htm to take app offline
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.6
+      - uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
           server: win1020.site4now.net
           username: ${{ secrets.FTP_USERNAME }}
@@ -64,8 +51,7 @@ jobs:
           local-dir: ./app_offline/
           server-dir: /ecom/
 
-      - name: Deploy published files
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.6
+      - uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
           server: win1020.site4now.net
           username: ${{ secrets.FTP_USERNAME }}
@@ -73,15 +59,13 @@ jobs:
           local-dir: ./publish/
           server-dir: /ecom/
 
-      - name: Remove app_offline folder locally
-        run: rm -rf app_offline
+      - run: rm -rf app_offline
 
-      - name: Remove app_offline.htm from server (bring app online)
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.6
+      - uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
           server: win1020.site4now.net
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./empty_folder/   # Prepare an empty folder either in repo or dynamically in previous step
+          local-dir: ./empty_folder/  # Must be an empty folder you create or generate
           server-dir: /ecom/
           dangerous-clean-slate: true
