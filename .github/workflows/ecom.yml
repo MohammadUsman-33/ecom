@@ -30,13 +30,13 @@ jobs:
       ## Step 1: Upload app_offline.htm to take the app offline
     - name: Upload app_offline.htm to stop app
       run: echo '<html><body><h1>Maintenance, please check back soon.</h1></body></html>' > app_offline.htm
-    - name: Deploy app_offline.htm
+    - name: Deploy app_offline/app_offline.htm
       uses: SamKirkland/FTP-Deploy-Action@v4.3.6
       with:
           server: win1020.site4now.net
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./app_offline.htm
+          local-dir: ./app_offline/
           server-dir: /ecom/
 
       # Step 2: Deploy published app files
