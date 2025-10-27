@@ -4,37 +4,33 @@ on:
   push:
     branches:
       - master
-  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
     outputs:
-      publish-artifact-name: publish-artifact
+      artifact-name: ecom-publish
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup .NET 8.0 SDK
+      - name: Setup .NET 8 SDK
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0'
 
-      - name: Restore dependencies
-        run: dotnet restore ecom.sln
-
-      - name: Build project
-        run: dotnet build ecom.sln --configuration Release --no-restore
-
-      - name: Publish project
-        run: dotnet publish ecom/ecom.csproj --configuration Release --output ./ecom-publish/
+      - name: Restore, Build, and Publish
+        run: |
+          dotnet restore ecom.sln
+          dotnet build ecom.sln --configuration Release --no-restore
+          dotnet publish ecom/ecom.csproj --configuration Release --output ./ecom-publish/
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: publish-artifact
-          path: ./publish/
+          name: ecom-publish
+          path: ./ecom-publish/
 
   deploy:
     runs-on: ubuntu-latest
@@ -44,47 +40,42 @@ jobs:
       - name: Download published artifact
         uses: actions/download-artifact@v4
         with:
-          name: publish-artifact
-          path: ./publish/
+          name: ecom-publish
+          path: ./ecom-publish/
 
-      # Step 1: Upload maintenance page to take site offline
+      # Step 1: Prepare maintenance page
       - name: Prepare maintenance page
         run: |
           mkdir -p app_offline
           echo '<html><body><h1>Maintenance: Site is temporarily offline.</h1></body></html>' > app_offline/app_offline.htm
 
+      # Step 2: Upload maintenance page to take site offline
       - name: Upload maintenance page
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
           server: win1020.site4now.net
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
+          username: musman33-001
+          password: your-password-here
           local-dir: ./app_offline/
           server-dir: /ecom/
-          dangerous-clean-slate: true
 
-      # Step 2: Restart App Pool to avoid file lock
-      - name: Restart App Pool musman33-001
+      # Step 3: Restart App Pool (SmarterASP)
+      - name: Restart App Pool
         run: |
-          curl -X POST "https://win1020.site4now.net/api/appPoolRestart?pool=musman33-001" \
-          -u "${{ secrets.FTP_USERNAME }}:${{ secrets.FTP_PASSWORD }}" || echo "App pool restart skipped (endpoint may differ on SmarterASP)."
-
-      # Step 3: Wait a few seconds for app to unload
-      - name: Wait for App to Unload
-        run: sleep 10
+          curl -X POST "https://panel.smarterasp.net/API/AppPoolControl" \
+          -d "AppPoolName=musman33-001&Action=Restart&Username=musman33-001&Password=your-password-here"
 
       # Step 4: Deploy published files
       - name: Deploy published files
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
           server: win1020.site4now.net
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
+          username: musman33-001
+          password: your-password-here
           local-dir: ./ecom-publish/
           server-dir: /ecom/
-          dangerous-clean-slate: true
 
-      # Step 5: Remove maintenance page locally and remotely
+      # Step 5: Remove maintenance page to bring site online
       - name: Remove local maintenance folder
         run: rm -rf app_offline
 
@@ -92,8 +83,8 @@ jobs:
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
           server: win1020.site4now.net
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ""
+          username: musman33-001
+          password: your-password-here
+          local-dir: ./ecom-publish/
           server-dir: /ecom/
-          dangerous-clean-slate: true
+          dangerous-clean-slate: false
