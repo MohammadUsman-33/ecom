@@ -6,82 +6,73 @@ on:
       - master
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
-    outputs:
-      publish-artifact-name: publish-artifact
 
     steps:
-      # Checkout the repository
-      - uses: actions/checkout@v4
+    # 1️⃣ Checkout code
+    - name: Checkout code
+      uses: actions/checkout@v4
 
-      # Setup .NET SDK
-      - uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '8.0'
+    # 2️⃣ Setup .NET 8.0
+    - name: Setup .NET 8.0 SDK
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0'
 
-      # Restore dependencies
-      - run: dotnet restore ecom.sln
+    # 3️⃣ Restore dependencies
+    - name: Restore dependencies
+      run: dotnet restore ecom.sln
 
-      # Build project in Release mode
-      - run: dotnet build ecom.sln --configuration Release --no-restore
+    # 4️⃣ Build project
+    - name: Build project
+      run: dotnet build ecom.sln --configuration Release --no-restore
 
-      # Publish project output to ./publish/
-      - run: dotnet publish ecom/ecom.csproj --configuration Release --output ./publish/
+    # 5️⃣ Publish project to ./publish/
+    - name: Publish project
+      run: dotnet publish ecom/ecom.csproj --configuration Release --output ./publish/
 
-      # Upload published artifact
-      - uses: actions/upload-artifact@v4
-        with:
-          name: publish-artifact
-          path: ./publish/
+    # 6️⃣ Create temporary maintenance page
+    - name: Create maintenance page
+      run: |
+        mkdir -p app_offline
+        echo '<html><body><h1>Maintenance Mode</h1><p>The site will be back shortly.</p></body></html>' > app_offline/app_offline.htm
 
-  deploy:
-    runs-on: ubuntu-latest
-    needs: build
+    # 7️⃣ Upload maintenance page to take site offline
+    - name: Upload maintenance page
+      uses: SamKirkland/FTP-Deploy-Action@v4.3.6
+      with:
+        server: win1020.site4now.net
+        username: ${{ secrets.FTP_USERNAME }}
+        password: ${{ secrets.FTP_PASSWORD }}
+        local-dir: ./app_offline/
+        server-dir: /ecom/
 
-    steps:
-      # Download published artifact
-      - uses: actions/download-artifact@v4
-        with:
-          name: publish-artifact
-          path: ./publish/
+    # 8️⃣ Deploy published files
+    - name: Deploy application files
+      uses: SamKirkland/FTP-Deploy-Action@v4.3.6
+      with:
+        server: win1020.site4now.net
+        username: ${{ secrets.FTP_USERNAME }}
+        password: ${{ secrets.FTP_PASSWORD }}
+        local-dir: ./publish/
+        server-dir: /ecom/
+        dangerous-clean-slate: false  # safer incremental deploy
 
-      # Create temporary maintenance page
-      - name: Create maintenance page
-        run: |
-          mkdir -p temp_maintenance
-          echo '<html><body><h1>Maintenance Mode</h1><p>The site will be back online shortly.</p></body></html>' > temp_maintenance/app_offline.htm
+    # 9️⃣ Remove maintenance page (bring site back online)
+    - name: Remove maintenance page safely
+      run: |
+        echo "Removing app_offline.htm to bring site online..."
+        curl -u ${{ secrets.FTP_USERNAME }}:${{ secrets.FTP_PASSWORD }} ftp://win1020.site4now.net/ecom/app_offline.htm -Q "-DELE app_offline.htm" || true
 
-      # STEP 1: Put site in maintenance mode
-      - name: Put site in maintenance mode
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.6
-        with:
-          server: win1020.site4now.net
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./temp_maintenance/
-          server-dir: ecom/
-          exclude: '**/.git*'
-
-      # STEP 2: Deploy the new build
-      - name: Deploy application files
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.6
-        with:
-          server: win1020.site4now.net
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./publish/
-          server-dir: ecom/
-          exclude: '**/.git*'
-          dangerous-clean-slate: false  # Only uploads changed files
-
-      # STEP 3: Remove maintenance mode safely
-      - name: Remove maintenance mode
-        run: |
-          echo "Bringing site back online..."
-          # Overwrite app_offline.htm with empty content
-          echo "" > empty.html
-          curl -T empty.html -u ${{ secrets.FTP_USERNAME }}:${{ secrets.FTP_PASSWORD }} ftp://win1020.site4now.net/ecom/app_offline.htm
-          # Then delete it from the server
-          curl -u ${{ secrets.FTP_USERNAME }}:${{ secrets.FTP_PASSWORD }} ftp://win1020.site4now.net/ecom/app_offline.htm -Q "-DELE app_offline.htm" || true
-
+    # 🔟 Verify site is online
+    - name: Verify site is online
+      run: |
+        echo "Checking if site is live..."
+        RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" https://musman33-001-site1.rtempurl.com/)
+        if [ "$RESPONSE" -ne 200 ]; then
+          echo "Site check failed! HTTP code: $RESPONSE"
+          exit 1
+        else
+          echo "Site is live! HTTP code: $RESPONSE"
+        fi
