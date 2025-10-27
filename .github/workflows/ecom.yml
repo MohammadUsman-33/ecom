@@ -1,15 +1,18 @@
 name: Deploy ASP.NET App to SmarterASP.NET
 
-# Manual trigger to test immediately; can switch to push trigger later
+# Triggers: manual + push to master branch
 on:
-  workflow_dispatch:
+  workflow_dispatch:   # allows manual run
+  push:
+    branches:
+      - master        # your actual branch
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout code
+      # 1️⃣ Checkout repository
       - name: Checkout code
         uses: actions/checkout@v3
 
@@ -24,22 +27,22 @@ jobs:
           server-dir: /ecom/
           force: true
 
-      # 3️⃣ Wait a few seconds to ensure ASP.NET unloads
+      # 3️⃣ Wait for ASP.NET to unload app
       - name: Wait for App to Unload
         run: sleep 10
 
-      # 4️⃣ Deploy application files with retry for locked files
+      # 4️⃣ Deploy all application files to /ecom/ with retry for locked files
       - name: Deploy Application
         uses: SamKirkland/FTP-Deploy-Action@v4
         with:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./   # root folder of your app in repo
+          local-dir: ./        # root folder of your app
           server-dir: /ecom/
           force: true
-          retries: 3       # retry 3 times if a file is locked
-          retry-delay: 5   # wait 5 seconds between retries
+          retries: 3           # retry 3 times if file is locked
+          retry-delay: 5       # wait 5 seconds between retries
 
       # 5️⃣ Remove maintenance page to bring site back online
       - name: Remove Maintenance Page
@@ -48,6 +51,6 @@ jobs:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ""        # empty, just deleting the server file
+          local-dir: ""            # empty, just deleting the server file
           server-dir: /ecom/app_offline.htm
           delete: true
