@@ -41,13 +41,14 @@ jobs:
           path: ./publish/
 
       # 🔹 Create temporary maintenance file
-      - run: |
+      - name: Create maintenance page
+        run: |
           mkdir -p temp_maintenance
           echo '<html><body><h1>Maintenance Mode - Please check back soon!</h1></body></html>' > temp_maintenance/app_offline.htm
 
       # 🔹 STEP 1: Put site in maintenance mode
       - name: Put site in maintenance mode
-      - uses: SamKirkland/FTP-Deploy-Action@v4.3.6
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
           server: win1020.site4now.net
           username: ${{ secrets.FTP_USERNAME }}
@@ -58,7 +59,7 @@ jobs:
 
       # 🔹 STEP 2: Deploy the new build
       - name: Deploy application files
-      - uses: SamKirkland/FTP-Deploy-Action@v4.3.6
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
           server: win1020.site4now.net
           username: ${{ secrets.FTP_USERNAME }}
@@ -69,6 +70,6 @@ jobs:
 
       # 🔹 STEP 3: Bring the site back online
       - name: Remove maintenance mode
-      - run: |
+        run: |
           echo "Removing maintenance mode..."
           curl -u ${{ secrets.FTP_USERNAME }}:${{ secrets.FTP_PASSWORD }} ftp://win1020.site4now.net/wwwroot/app_offline.htm -Q "-DELE wwwroot/app_offline.htm" || true
