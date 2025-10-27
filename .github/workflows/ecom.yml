@@ -54,7 +54,7 @@ jobs:
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./temp_maintenance/
-          server-dir: wwwroot/
+          server-dir: ecom/
           exclude: '**/.git*'
 
       # 🔹 STEP 2: Deploy the published app
@@ -65,7 +65,7 @@ jobs:
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./publish/
-          server-dir: wwwroot/
+          server-dir: ecom/
           exclude: '**/.git*'
 
       # 🔹 STEP 3: Safely bring the site back online
