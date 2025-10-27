@@ -43,13 +43,11 @@ jobs:
           name: ecom-publish
           path: ./ecom-publish/
 
-      # Step 1: Prepare maintenance page
       - name: Prepare maintenance page
         run: |
           mkdir -p app_offline
           echo '<html><body><h1>Maintenance: Site is temporarily offline.</h1></body></html>' > app_offline/app_offline.htm
 
-      # Step 2: Upload maintenance page to take site offline
       - name: Upload maintenance page
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
@@ -59,23 +57,20 @@ jobs:
           local-dir: ./app_offline/
           server-dir: /ecom/
 
-      # Step 3: Restart App Pool (SmarterASP)
       - name: Restart App Pool
         run: |
-          curl -X POST "https://panel.smarterasp.net/API/AppPoolControl" \
-          -d "AppPoolName=musman33-001&Action=Restart&Username=musman33-001&Password=your-password-here"
+          curl -X POST "https://panel.smarterasp.net/API/AppPoolControl.ashx" \
+          -d "AppPoolName=musman33-001&Action=Restart&Username=${{ secrets.FTP_USERNAME }}&Password=${{ secrets.FTP_PASSWORD }}"
 
-      # Step 4: Deploy published files
       - name: Deploy published files
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
           server: win1020.site4now.net
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./publish/
+          local-dir: ./ecom-publish/
           server-dir: /ecom/
 
-      # Step 5: Remove maintenance page to bring site online
       - name: Remove local maintenance folder
         run: rm -rf app_offline
 
@@ -85,6 +80,6 @@ jobs:
           server: win1020.site4now.net
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./publish/
+          local-dir: ./app_offline/
           server-dir: /ecom/
           dangerous-clean-slate: false
