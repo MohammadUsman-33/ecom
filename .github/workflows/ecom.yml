@@ -72,7 +72,7 @@ jobs:
           server: win1020.site4now.net
           username: musman33-001
           password: your-password-here
-          local-dir: ./ecom-publish/
+          local-dir: ./publish/
           server-dir: /ecom/
 
       # Step 5: Remove maintenance page to bring site online
@@ -85,6 +85,6 @@ jobs:
           server: win1020.site4now.net
           username: musman33-001
           password: your-password-here
-          local-dir: ./ecom-publish/
+          local-dir: ./publish/
           server-dir: /ecom/
           dangerous-clean-slate: false
