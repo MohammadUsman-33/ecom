@@ -49,7 +49,7 @@ jobs:
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./app_offline/
-          server-dir: /ecom/
+          server-dir: ecom/
 
       - uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
@@ -57,7 +57,7 @@ jobs:
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./publish/
-          server-dir: /ecom/
+          server-dir: ecom/
 
       - run: rm -rf app_offline
 
@@ -67,5 +67,5 @@ jobs:
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./empty_folder/  # Must be an empty folder you create or generate
-          server-dir: /ecom/
+          server-dir: ecom/
           dangerous-clean-slate: true
