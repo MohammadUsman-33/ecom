@@ -7,14 +7,14 @@ on:
 
 jobs:
   deploy:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
 
     steps:
       # 1️⃣ Checkout code
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # 2️⃣ Upload app_offline.htm via FTP to show maintenance page
+      # 2️⃣ Upload maintenance page (app_offline.htm) to /ecom/
       - name: Upload Maintenance Page
         uses: SamKirkland/FTP-Deploy-Action@v4
         with:
@@ -25,37 +25,28 @@ jobs:
           server-dir: /ecom/
           force: true
 
-      # 3️⃣ Stop App Pool
-      - name: Stop IIS App Pool
-        run: |
-          Import-Module WebAdministration
-          Stop-WebAppPool -Name "musman33-001"
-        shell: powershell
+      # 3️⃣ Wait a few seconds to ensure ASP.NET unloads
+      - name: Wait for App to Unload
+        run: sleep 10
 
-      # 4️⃣ Deploy application via FTP
+      # 4️⃣ Deploy all application files to /ecom/
       - name: Deploy Application
         uses: SamKirkland/FTP-Deploy-Action@v4
         with:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./  # root folder of your app in repo
+          local-dir: ./   # root folder of your app in repo
           server-dir: /ecom/
           force: true
 
-      # 5️⃣ Remove maintenance page
+      # 5️⃣ Remove maintenance page to bring site back online
       - name: Remove Maintenance Page
-        run: |
-          try {
-            Remove-Item "C:\inetpub\wwwroot\ecom\app_offline.htm" -ErrorAction SilentlyContinue
-          } catch {
-            Write-Host "Maintenance page not found or already removed."
-          }
-        shell: powershell
-
-      # 6️⃣ Start App Pool
-      - name: Start IIS App Pool
-        run: |
-          Import-Module WebAdministration
-          Start-WebAppPool -Name "musman33-001"
-        shell: powershell
+        uses: SamKirkland/FTP-Deploy-Action@v4
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ""       # empty, just deleting the server file
+          server-dir: /ecom/app_offline.htm
+          delete: true
