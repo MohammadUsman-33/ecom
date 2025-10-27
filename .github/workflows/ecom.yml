@@ -43,25 +43,24 @@ jobs:
           name: ecom-publish
           path: ./ecom-publish/
 
+      # Step 1: Prepare App_Offline.htm in a temporary folder
       - name: Prepare maintenance page
         run: |
-          mkdir -p app_offline
-          echo '<html><body><h1>Maintenance: Site is temporarily offline.</h1></body></html>' > app_offline/app_offline.htm
+          mkdir -p app_offline_root
+          echo '<html><body><h1>Maintenance: Site is temporarily offline.</h1></body></html>' > app_offline_root/App_Offline.htm
 
+      # Step 2: Upload maintenance page
       - name: Upload maintenance page
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
           server: win1020.site4now.net
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./app_offline/
+          local-dir: ./app_offline_root/
           server-dir: /ecom/
+          dangerous-clean-slate: false
 
-      - name: Restart App Pool
-        run: |
-          curl -X POST "https://panel.smarterasp.net/API/AppPoolControl.ashx" \
-          -d "AppPoolName=musman33-001&Action=Restart&Username=${{ secrets.FTP_USERNAME }}&Password=${{ secrets.FTP_PASSWORD }}"
-
+      # Step 3: Deploy published files
       - name: Deploy published files
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
@@ -70,16 +69,19 @@ jobs:
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./ecom-publish/
           server-dir: /ecom/
+          dangerous-clean-slate: false
 
+      # Step 4: Remove local maintenance folder
       - name: Remove local maintenance folder
-        run: rm -rf app_offline
+        run: rm -rf app_offline_root
 
+      # Step 5: Remove maintenance page from server
       - name: Remove maintenance page from server
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
           server: win1020.site4now.net
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./app_offline/
+          local-dir: ./app_offline_root/   # folder is empty locally
           server-dir: /ecom/
           dangerous-clean-slate: false
