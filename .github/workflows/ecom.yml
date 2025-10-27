@@ -43,8 +43,33 @@ jobs:
           name: ecom-publish
           path: ./ecom-publish/
 
-      # Step 1: Deploy /ecom/ site
-      - name: Deploy /ecom/
+      # Step 0: Prepare offline-app folder locally (optional)
+      - name: Prepare /offline-app/ folder
+        run: |
+          mkdir -p offline-app
+          echo '<html><body><h1>Offline App Placeholder</h1></body></html>' > offline-app/index.html
+
+      # Step 1: Put /ecom/ site in offline mode using App_Offline.htm
+      - name: Put /ecom/ in offline mode
+        run: |
+          mkdir -p ecom-offline
+          echo '<html><body><h1>Maintenance: Site is temporarily offline.</h1></body></html>' > ecom-offline/App_Offline.htm
+
+      - name: Upload App_Offline.htm to /ecom/
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.6
+        with:
+          server: win1020.site4now.net
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./ecom-offline/
+          server-dir: /ecom/
+          dangerous-clean-slate: false
+
+      - name: Wait for IIS to release files
+        run: sleep 5
+
+      # Step 2: Deploy /ecom/ published files
+      - name: Deploy /ecom/ site
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
           server: win1020.site4now.net
@@ -54,13 +79,22 @@ jobs:
           server-dir: /ecom/
           dangerous-clean-slate: false
 
-      # Step 2: Prepare /offline-app/ folder locally (optional content)
-      - name: Prepare /offline-app/ folder
+      # Step 3: Remove App_Offline.htm to bring site back online
+      - name: Remove App_Offline.htm
         run: |
-          mkdir -p offline-app
-          echo '<html><body><h1>Offline App Placeholder</h1></body></html>' > offline-app/index.html
+          rm -rf ecom-offline
+        # If you want to also delete it from server:
+      - name: Remove App_Offline.htm from server
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.6
+        with:
+          server: win1020.site4now.net
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./ecom-offline/  # folder is empty now
+          server-dir: /ecom/
+          dangerous-clean-slate: false
 
-      # Step 3: Deploy /offline-app/
+      # Step 4: Deploy /offline-app/ folder (optional, separate)
       - name: Deploy /offline-app/
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
@@ -71,6 +105,6 @@ jobs:
           server-dir: /offline-app/
           dangerous-clean-slate: false
 
-      # Step 4: Clean up local offline-app folder
+      # Step 5: Clean up local offline-app folder
       - name: Remove local offline-app folder
         run: rm -rf offline-app
