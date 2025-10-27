@@ -15,46 +15,39 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # 2️⃣ Ensure FTP secrets exist
-      - name: Check secrets
-        run: |
-          if [ -z "${{ secrets.FTP_SERVER }}" ]; then echo "FTP_SERVER secret missing" && exit 1; fi
-          if [ -z "${{ secrets.FTP_USERNAME }}" ]; then echo "FTP_USERNAME secret missing" && exit 1; fi
-          if [ -z "${{ secrets.FTP_PASSWORD }}" ]; then echo "FTP_PASSWORD secret missing" && exit 1; fi
-
-      # 3️⃣ Upload maintenance page (app_offline.htm)
+      # 2️⃣ Upload maintenance page (app_offline.htm)
       - name: Upload Maintenance Page
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
+          server: ftp.yourserver.com       # 🔹 Replace with your hardcoded FTP server
+          username: yourusername           # 🔹 Replace with your FTP username
+          password: yourpassword           # 🔹 Replace with your FTP password
           local-dir: ./app_offline.htm
           server-dir: /ecom/
           dangerous-clean-slate: true
 
-      # 4️⃣ Wait for app to unload
+      # 3️⃣ Wait for ASP.NET to unload app
       - name: Wait for App to Unload
         run: sleep 10
 
-      # 5️⃣ Deploy application files
+      # 4️⃣ Deploy application files
       - name: Deploy Application
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./       # root folder of your app
+          server: ftp.yourserver.com       # 🔹 Replace
+          username: yourusername           # 🔹 Replace
+          password: yourpassword           # 🔹 Replace
+          local-dir: ./                     # root folder of your app
           server-dir: /ecom/
           dangerous-clean-slate: true
 
-      # 6️⃣ Remove maintenance page
+      # 5️⃣ Remove maintenance page
       - name: Remove Maintenance Page
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
+          server: ftp.yourserver.com       # 🔹 Replace
+          username: yourusername           # 🔹 Replace
+          password: yourpassword           # 🔹 Replace
           local-dir: ""
           server-dir: /ecom/app_offline.htm
           dangerous-clean-slate: true
