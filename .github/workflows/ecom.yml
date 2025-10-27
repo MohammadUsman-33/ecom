@@ -1,9 +1,8 @@
 name: Deploy ASP.NET App to SmarterASP.NET
 
+# Manual trigger to test immediately; can switch to push trigger later
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -29,7 +28,7 @@ jobs:
       - name: Wait for App to Unload
         run: sleep 10
 
-      # 4️⃣ Deploy all application files to /ecom/
+      # 4️⃣ Deploy application files with retry for locked files
       - name: Deploy Application
         uses: SamKirkland/FTP-Deploy-Action@v4
         with:
@@ -39,6 +38,8 @@ jobs:
           local-dir: ./   # root folder of your app in repo
           server-dir: /ecom/
           force: true
+          retries: 3       # retry 3 times if a file is locked
+          retry-delay: 5   # wait 5 seconds between retries
 
       # 5️⃣ Remove maintenance page to bring site back online
       - name: Remove Maintenance Page
@@ -47,6 +48,6 @@ jobs:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ""       # empty, just deleting the server file
+          local-dir: ""        # empty, just deleting the server file
           server-dir: /ecom/app_offline.htm
           delete: true
