@@ -54,8 +54,8 @@ jobs:
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
           server: win1020.site4now.net
-          username: musman33-001
-          password: your-password-here
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./app_offline/
           server-dir: /ecom/
 
@@ -70,8 +70,8 @@ jobs:
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
           server: win1020.site4now.net
-          username: musman33-001
-          password: your-password-here
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./publish/
           server-dir: /ecom/
 
@@ -83,8 +83,8 @@ jobs:
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
           server: win1020.site4now.net
-          username: musman33-001
-          password: your-password-here
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./publish/
           server-dir: /ecom/
           dangerous-clean-slate: false
