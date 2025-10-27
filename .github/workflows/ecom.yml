@@ -1,4 +1,4 @@
-name: Build and Deploy to SmarterASP.net FTP
+name: Deploy to SmarterASP.net FTP
 
 on:
   push:
@@ -6,48 +6,28 @@ on:
       - master
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup .NET 8 SDK
+      - name: Setup .NET SDK
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0'
 
-      - name: Restore, Build, and Publish
+      - name: Publish project
         run: |
-          dotnet restore ecom.sln
-          dotnet build ecom.sln --configuration Release --no-restore
-          dotnet publish ecom/ecom.csproj --configuration Release --output ./ecom-publish/
+          dotnet publish ecom/ecom.csproj -c Release -o ./ecom-publish
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ecom-publish
-          path: ./ecom-publish/
-
-  deploy:
-    runs-on: ubuntu-latest
-    needs: build
-
-    steps:
-      - name: Download published artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: ecom-publish
-          path: ./ecom-publish/
-
-      # Prepare App_Offline.htm for /ecom/
+      # Step 1: Upload App_Offline.htm to /ecom/
       - name: Prepare App_Offline.htm
         run: |
           mkdir -p ecom-offline
-          echo '<html><body><h1>Maintenance: Site is temporarily offline.</h1></body></html>' > ecom-offline/App_Offline.htm
+          echo '<html><body><h1>Maintenance: Site is offline</h1></body></html>' > ecom-offline/App_Offline.htm
 
-      # Upload App_Offline.htm to bring /ecom/ offline
       - name: Upload App_Offline.htm
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
@@ -58,12 +38,12 @@ jobs:
           server-dir: /ecom/
           dangerous-clean-slate: false
 
-      # Wait for IIS to release files
-      - name: Wait for IIS
+      # Step 2: Small wait to ensure IIS releases locks
+      - name: Wait 5 seconds
         run: sleep 5
 
-      # Deploy /ecom/ published files
-      - name: Deploy /ecom/
+      # Step 3: Deploy published files
+      - name: Deploy /ecom/ files
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
           server: win1020.site4now.net
@@ -73,7 +53,7 @@ jobs:
           server-dir: /ecom/
           dangerous-clean-slate: false
 
-      # Remove App_Offline.htm from /ecom/ to bring site online
+      # Step 4: Remove App_Offline.htm
       - name: Remove App_Offline.htm
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
@@ -83,10 +63,10 @@ jobs:
           local-dir: ./ecom-offline/
           server-dir: /ecom/
           dangerous-clean-slate: false
-          delete: true   # <- ensures App_Offline.htm is removed
+          delete: true
 
-      # Deploy /offline-app/ as independent directory
-      - name: Deploy /offline-app/
+      # Step 5: Deploy /offline-app/ separately
+      - name: Prepare offline-app
         run: |
           mkdir -p offline-app
           echo '<html><body><h1>Offline App Placeholder</h1></body></html>' > offline-app/index.html
@@ -100,7 +80,3 @@ jobs:
           local-dir: ./offline-app/
           server-dir: /offline-app/
           dangerous-clean-slate: false
-
-      # Clean local folders
-      - name: Cleanup local folders
-        run: rm -rf ecom-offline offline-app
