@@ -1,56 +1,57 @@
 name: Deploy ASP.NET App to SmarterASP.NET
 
-# Triggers: manual + push to master branch
 on:
-  workflow_dispatch:   # allows manual run
+  workflow_dispatch:
   push:
     branches:
-      - master        # your actual branch
+      - master
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      FTP_SERVER: ${{ secrets.FTP_SERVER }}
+      FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+      FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
 
     steps:
-      # 1️⃣ Checkout repository
-      - name: Checkout code
+      # 1️⃣ Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v3
 
       # 2️⃣ Upload maintenance page (app_offline.htm) to /ecom/
       - name: Upload Maintenance Page
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
+          server: ${{ env.FTP_SERVER }}
+          username: ${{ env.FTP_USERNAME }}
+          password: ${{ env.FTP_PASSWORD }}
           local-dir: ./app_offline.htm
           server-dir: /ecom/
-          force: true
+          dangerous-clean-slate: true    # replaces old 'force'
 
       # 3️⃣ Wait for ASP.NET to unload app
       - name: Wait for App to Unload
         run: sleep 10
 
-      # 4️⃣ Deploy all application files to /ecom/ with retry for locked files
+      # 4️⃣ Deploy all application files to /ecom/
       - name: Deploy Application
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
+          server: ${{ env.FTP_SERVER }}
+          username: ${{ env.FTP_USERNAME }}
+          password: ${{ env.FTP_PASSWORD }}
           local-dir: ./        # root folder of your app
           server-dir: /ecom/
-          force: true
-          retries: 3           # retry 3 times if file is locked
-          retry-delay: 5       # wait 5 seconds between retries
+          dangerous-clean-slate: true
 
-      # 5️⃣ Remove maintenance page to bring site back online
+      # 5️⃣ Remove maintenance page
       - name: Remove Maintenance Page
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
+          server: ${{ env.FTP_SERVER }}
+          username: ${{ env.FTP_USERNAME }}
+          password: ${{ env.FTP_PASSWORD }}
           local-dir: ""            # empty, just deleting the server file
           server-dir: /ecom/app_offline.htm
-          delete: true
+          dangerous-clean-slate: true
