@@ -3,73 +3,73 @@ name: Build and Deploy to SmarterASP.net FTP
 on:
   push:
     branches:
-      - master  # Trigger on pushes to main branch
+      - master
 
 jobs:
-  build-and-deploy:
+  build:
     runs-on: ubuntu-latest
+    outputs:
+      publish-artifact-name: publish-artifact
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Setup .NET 8.0 SDK
-      uses: actions/setup-dotnet@v3
-      with:
-        dotnet-version: '8.0'
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0'
 
-    - name: Restore dependencies
-      run: dotnet restore ecom.sln
+      - run: dotnet restore ecom.sln
 
-    - name: Build project
-      run: dotnet build ecom.sln --configuration Release --no-restore
+      - run: dotnet build ecom.sln --configuration Release --no-restore
 
-    - name: Publish project
-      run: dotnet publish ecom/ecom.csproj --configuration Release --output ./publish/
-      
-      ## Step 1: Upload app_offline.htm to take the app offline
-    - name: Create app_offline folder and file
-      run: |
-          mkdir -p app_offline
-          echo '<html><body><h1>Maintenance, please check back soon.</h1></body></html>' > app_offline/app_offline.htm
-          
-    - name: Upload app_offline.htm to take app offline
-      uses: SamKirkland/FTP-Deploy-Action@v4.3.6
-      with:
-        server: win1020.site4now.net
-        username: ${{ secrets.FTP_USERNAME }}
-        password: ${{ secrets.FTP_PASSWORD }}
-        local-dir: ./app_offline/
-        server-dir: /ecom/
+      - run: dotnet publish ecom/ecom.csproj --configuration Release --output ./publish/
 
-      # Step 2: Deploy published app files
-    - name: Deploy published files
-      uses: SamKirkland/FTP-Deploy-Action@v4.3.6
-      with:
-        server: win1020.site4now.net
-        username: ${{ secrets.FTP_USERNAME }}
-        password: ${{ secrets.FTP_PASSWORD }}
-        local-dir: ./publish/
-        server-dir: /ecom/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: publish-artifact
+          path: ./publish/
 
-    # Step 3: Remove app_offline.htm after deployment (bring app online)
-    - name: Remove app_offline.htm
-      run: rm -f app_offline.htm
-    - name: Remove app_offline.htm from server
-      uses: SamKirkland/FTP-Deploy-Action@v4.3.6
-      with:
-        server: win1020.site4now.net
-        username: ${{ secrets.FTP_USERNAME }}
-        password: ${{ secrets.FTP_PASSWORD }}
-        local-dir: ./         # an empty local folder or one without app_offline.htm
-        server-dir: /ecom/
-        dangerous-clean-slate: true   # deletes files on server that are not in local-dir, use with caution
-    - name: Deploy via FTP to SmarterASP.net
-      uses: SamKirkland/FTP-Deploy-Action@v4.3.6
-      with:
-        server: win1020.site4now.net
-        username: ${{ secrets.FTP_USERNAME }}
-        password: ${{ secrets.FTP_PASSWORD }}
-        local-dir: ./publish/
-        server-dir: /ecom/
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
 
+    steps:
+      # 🔹 Download published files
+      - uses: actions/download-artifact@v4
+        with:
+          name: publish-artifact
+          path: ./publish/
+
+      # 🔹 Create temporary maintenance file
+      - name: Create maintenance page
+        run: |
+          mkdir -p temp_maintenance
+          echo '<html><body><h1>Maintenance Mode - Please check back soon!</h1></body></html>' > temp_maintenance/app_offline.htm
+
+      # 🔹 STEP 1: Put site in maintenance mode
+      - name: Put site in maintenance mode
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.6
+        with:
+          server: win1020.site4now.net
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./temp_maintenance/
+          server-dir: wwwroot/
+          exclude: '**/.git*'
+
+      # 🔹 STEP 2: Deploy the new build
+      - name: Deploy application files
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.6
+        with:
+          server: win1020.site4now.net
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./publish/
+          server-dir: wwwroot/
+          exclude: '**/.git*'
+
+      # 🔹 STEP 3: Bring the site back online
+      - name: Remove maintenance mode
+        run: |
+          echo "Removing maintenance mode..."
+          curl -u ${{ secrets.FTP_USERNAME }}:${{ secrets.FTP_PASSWORD }} ftp://win1020.site4now.net/wwwroot/app_offline.htm -Q "-DELE wwwroot/app_offline.htm" || true
