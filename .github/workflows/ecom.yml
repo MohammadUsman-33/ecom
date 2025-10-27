@@ -46,23 +46,22 @@ jobs:
           name: publish-artifact
           path: ./publish/
 
-      # Step 1: Upload maintenance page
+      # Step 1: Upload maintenance page to take site offline
       - name: Create app_offline.htm
         run: |
-          mkdir -p app_offline
-          echo '<html><body><h1>Maintenance, please check back soon.</h1></body></html>' > app_offline/app_offline.htm
+          echo '<html><body><h1>Maintenance, please check back soon.</h1></body></html>' > app_offline.htm
 
-      - name: Upload maintenance page
+      - name: Upload app_offline.htm
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
           server: win1020.site4now.net
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./app_offline/app_offline.htm
+          local-dir: ./app_offline.htm
           server-dir: /ecom/app_offline.htm
           dangerous-clean-slate: false
 
-      # Step 2: Deploy published app files
+      # Step 2: Deploy published files safely
       - name: Deploy published files
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
@@ -71,18 +70,19 @@ jobs:
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./publish/
           server-dir: /ecom/
-          dangerous-clean-slate: false  # Important: do not delete server files
+          dangerous-clean-slate: false
 
-      # Step 3: Remove maintenance page after deploy
-      - name: Remove maintenance page from server
+      # Step 3: Remove maintenance page to bring site back online
+      - name: Remove app_offline.htm from server
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
           server: win1020.site4now.net
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./empty_folder/app_offline.htm  # just a placeholder file
+          local-dir: ./  # current folder is fine, no app_offline.htm here
           server-dir: /ecom/app_offline.htm
           dangerous-clean-slate: false
 
-      - name: Clean up local temp folders
-        run: rm -rf app_offline empty_folder
+      # Step 4: Cleanup local file
+      - name: Clean up local maintenance file
+        run: rm -f app_offline.htm
