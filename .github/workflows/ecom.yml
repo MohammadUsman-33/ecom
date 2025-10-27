@@ -18,7 +18,7 @@ jobs:
 
       # 2️⃣ Upload maintenance page (app_offline.htm) to /ecom/
       - name: Upload Maintenance Page
-        uses: SamKirkland/FTP-Deploy-Action@v4
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
