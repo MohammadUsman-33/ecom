@@ -34,23 +34,30 @@ jobs:
     needs: build
 
     steps:
+      # 🔹 Download published files
       - uses: actions/download-artifact@v4
         with:
           name: publish-artifact
           path: ./publish/
 
+      # 🔹 Create temporary maintenance file
       - run: |
-          mkdir -p app_offline
-          echo '<html><body><h1>Maintenance mode</h1></body></html>' > app_offline/app_offline.htm
+          mkdir -p temp_maintenance
+          echo '<html><body><h1>Maintenance Mode - Please check back soon!</h1></body></html>' > temp_maintenance/app_offline.htm
 
+      # 🔹 STEP 1: Put site in maintenance mode
+      - name: Put site in maintenance mode
       - uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
           server: win1020.site4now.net
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./app_offline/
-          server-dir: ecom/
+          local-dir: ./temp_maintenance/
+          server-dir: wwwroot/
+          exclude: '**/.git*'
 
+      # 🔹 STEP 2: Deploy the new build
+      - name: Deploy application files
       - uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
           server: win1020.site4now.net
@@ -58,14 +65,10 @@ jobs:
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./publish/
           server-dir: wwwroot/
+          exclude: '**/.git*'
 
-      - run: rm -rf app_offline
-
-      - uses: SamKirkland/FTP-Deploy-Action@v4.3.6
-        with:
-          server: win1020.site4now.net
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./empty_folder/  # Must be an empty folder you create or generate
-          server-dir: ecom/
-          dangerous-clean-slate: true
+      # 🔹 STEP 3: Bring the site back online
+      - name: Remove maintenance mode
+      - run: |
+          echo "Removing maintenance mode..."
+          curl -u ${{ secrets.FTP_USERNAME }}:${{ secrets.FTP_PASSWORD }} ftp://win1020.site4now.net/wwwroot/app_offline.htm -Q "-DELE wwwroot/app_offline.htm" || true
