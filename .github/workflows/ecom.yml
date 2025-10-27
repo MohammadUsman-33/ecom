@@ -1,87 +1,61 @@
-name: Build and Deploy to SmarterASP.net FTP
+name: Deploy ASP.NET App to SmarterASP.NET
 
 on:
   push:
     branches:
-      - master
+      - main
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    outputs:
-      publish-artifact-name: publish-artifact
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup .NET 8.0 SDK
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '8.0'
-
-      - name: Restore dependencies
-        run: dotnet restore ecom.sln
-
-      - name: Build project
-        run: dotnet build ecom.sln --configuration Release --no-restore
-
-      - name: Publish project
-        run: dotnet publish ecom/ecom.csproj --configuration Release --output ./publish/
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: publish-artifact
-          path: ./publish/
-
   deploy:
-    runs-on: ubuntu-latest
-    needs: build
+    runs-on: windows-latest
 
     steps:
-      - name: Download published artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: publish-artifact
-          path: ./publish/
+      # 1️⃣ Checkout code
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-      # Step 1: Put site offline
-      - name: Prepare maintenance page
+      # 2️⃣ Upload app_offline.htm via FTP to show maintenance page
+      - name: Upload Maintenance Page
+        uses: SamKirkland/FTP-Deploy-Action@v4
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./app_offline.htm
+          server-dir: /ecom/
+          force: true
+
+      # 3️⃣ Stop App Pool
+      - name: Stop IIS App Pool
         run: |
-          mkdir -p app_offline
-          echo '<html><body><h1>Maintenance: Site is temporarily offline.</h1></body></html>' > app_offline/app_offline.htm
+          Import-Module WebAdministration
+          Stop-WebAppPool -Name "musman33-001"
+        shell: powershell
 
-      - name: Upload maintenance page to take site offline
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.6
+      # 4️⃣ Deploy application via FTP
+      - name: Deploy Application
+        uses: SamKirkland/FTP-Deploy-Action@v4
         with:
-          server: win1020.site4now.net
+          server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./app_offline/
+          local-dir: ./  # root folder of your app in repo
           server-dir: /ecom/
+          force: true
 
-      # Step 2: Deploy published files
-      - name: Deploy published files
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.6
-        with:
-          server: win1020.site4now.net
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./publish/
-          server-dir: /ecom/
+      # 5️⃣ Remove maintenance page
+      - name: Remove Maintenance Page
+        run: |
+          try {
+            Remove-Item "C:\inetpub\wwwroot\ecom\app_offline.htm" -ErrorAction SilentlyContinue
+          } catch {
+            Write-Host "Maintenance page not found or already removed."
+          }
+        shell: powershell
 
-      # Step 3: Remove maintenance page to bring site online
-      - name: Remove local maintenance folder
-        run: rm -rf app_offline
-
-      - name: Remove maintenance page from server
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.6
-        with:
-          server: win1020.site4now.net
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./publish/   # folder with real site files
-          server-dir: /ecom/
-          dangerous-clean-slate: false  # keep files, just sync
-
+      # 6️⃣ Start App Pool
+      - name: Start IIS App Pool
+        run: |
+          Import-Module WebAdministration
+          Start-WebAppPool -Name "musman33-001"
+        shell: powershell
