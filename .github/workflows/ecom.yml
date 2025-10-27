@@ -9,49 +9,52 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    env:
-      FTP_SERVER: ${{ secrets.FTP_SERVER }}
-      FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
-      FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
 
     steps:
-      # 1️⃣ Checkout code
+      # 1️⃣ Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # 2️⃣ Upload maintenance page (app_offline.htm) to /ecom/
+      # 2️⃣ Ensure FTP secrets exist
+      - name: Check secrets
+        run: |
+          if [ -z "${{ secrets.FTP_SERVER }}" ]; then echo "FTP_SERVER secret missing" && exit 1; fi
+          if [ -z "${{ secrets.FTP_USERNAME }}" ]; then echo "FTP_USERNAME secret missing" && exit 1; fi
+          if [ -z "${{ secrets.FTP_PASSWORD }}" ]; then echo "FTP_PASSWORD secret missing" && exit 1; fi
+
+      # 3️⃣ Upload maintenance page (app_offline.htm)
       - name: Upload Maintenance Page
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
-          server: ${{ env.FTP_SERVER }}
-          username: ${{ env.FTP_USERNAME }}
-          password: ${{ env.FTP_PASSWORD }}
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./app_offline.htm
-          server-dir: /ecom/
-          dangerous-clean-slate: true    # replaces old 'force'
-
-      # 3️⃣ Wait for ASP.NET to unload app
-      - name: Wait for App to Unload
-        run: sleep 10
-
-      # 4️⃣ Deploy all application files to /ecom/
-      - name: Deploy Application
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.6
-        with:
-          server: ${{ env.FTP_SERVER }}
-          username: ${{ env.FTP_USERNAME }}
-          password: ${{ env.FTP_PASSWORD }}
-          local-dir: ./        # root folder of your app
           server-dir: /ecom/
           dangerous-clean-slate: true
 
-      # 5️⃣ Remove maintenance page
+      # 4️⃣ Wait for app to unload
+      - name: Wait for App to Unload
+        run: sleep 10
+
+      # 5️⃣ Deploy application files
+      - name: Deploy Application
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.6
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./       # root folder of your app
+          server-dir: /ecom/
+          dangerous-clean-slate: true
+
+      # 6️⃣ Remove maintenance page
       - name: Remove Maintenance Page
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
-          server: ${{ env.FTP_SERVER }}
-          username: ${{ env.FTP_USERNAME }}
-          password: ${{ env.FTP_PASSWORD }}
-          local-dir: ""            # empty, just deleting the server file
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ""
           server-dir: /ecom/app_offline.htm
           dangerous-clean-slate: true
