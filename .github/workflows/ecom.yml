@@ -28,7 +28,7 @@ jobs:
         run: dotnet build ecom.sln --configuration Release --no-restore
 
       - name: Publish project
-        run: dotnet publish ecom/ecom.csproj --configuration Release --output ./publish/
+        run: dotnet publish ecom/ecom.csproj --configuration Release --output ./ecom-publish/
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -80,7 +80,7 @@ jobs:
           server: win1020.site4now.net
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./publish/
+          local-dir: ./ecom-publish/
           server-dir: /ecom/
           dangerous-clean-slate: true
 
