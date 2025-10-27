@@ -43,25 +43,8 @@ jobs:
           name: ecom-publish
           path: ./ecom-publish/
 
-      # Step 1: Prepare App_Offline.htm in a temporary folder
-      - name: Prepare maintenance page
-        run: |
-          mkdir -p app_offline_root
-          echo '<html><body><h1>Maintenance: Site is temporarily offline.</h1></body></html>' > app_offline_root/App_Offline.htm
-
-      # Step 2: Upload maintenance page
-      - name: Upload maintenance page
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.6
-        with:
-          server: win1020.site4now.net
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./app_offline_root/
-          server-dir: /ecom/
-          dangerous-clean-slate: false
-
-      # Step 3: Deploy published files
-      - name: Deploy published files
+      # Step 1: Deploy /ecom/ site
+      - name: Deploy /ecom/
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
           server: win1020.site4now.net
@@ -71,17 +54,23 @@ jobs:
           server-dir: /ecom/
           dangerous-clean-slate: false
 
-      # Step 4: Remove maintenance page from server
-      - name: Remove maintenance page from server
+      # Step 2: Prepare /offline-app/ folder locally (optional content)
+      - name: Prepare /offline-app/ folder
+        run: |
+          mkdir -p offline-app
+          echo '<html><body><h1>Offline App Placeholder</h1></body></html>' > offline-app/index.html
+
+      # Step 3: Deploy /offline-app/
+      - name: Deploy /offline-app/
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
           server: win1020.site4now.net
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./app_offline_root/   # folder must exist
-          server-dir: /ecom/
+          local-dir: ./offline-app/
+          server-dir: /offline-app/
           dangerous-clean-slate: false
 
-      # Step 5: Remove local maintenance folder
-      - name: Remove local maintenance folder
-        run: rm -rf app_offline_root
+      # Step 4: Clean up local offline-app folder
+      - name: Remove local offline-app folder
+        run: rm -rf offline-app
