@@ -34,19 +34,19 @@ jobs:
     needs: build
 
     steps:
-      # 🔹 Download published files
+      # 🔹 Download published files from build job
       - uses: actions/download-artifact@v4
         with:
           name: publish-artifact
           path: ./publish/
 
-      # 🔹 Create temporary maintenance file
+      # 🔹 Create temporary maintenance page
       - name: Create maintenance page
         run: |
           mkdir -p temp_maintenance
           echo '<html><body><h1>Maintenance Mode - Please check back soon!</h1></body></html>' > temp_maintenance/app_offline.htm
 
-      # 🔹 STEP 1: Put site in maintenance mode
+      # 🔹 STEP 1: Put site into maintenance mode
       - name: Put site in maintenance mode
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
@@ -57,7 +57,7 @@ jobs:
           server-dir: wwwroot/
           exclude: '**/.git*'
 
-      # 🔹 STEP 2: Deploy the new build
+      # 🔹 STEP 2: Deploy the published app
       - name: Deploy application files
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
@@ -68,8 +68,10 @@ jobs:
           server-dir: wwwroot/
           exclude: '**/.git*'
 
-      # 🔹 STEP 3: Bring the site back online
-      - name: Remove maintenance mode
+      # 🔹 STEP 3: Safely bring the site back online
+      - name: Remove maintenance mode safely
         run: |
-          echo "Removing maintenance mode..."
-          curl -u ${{ secrets.FTP_USERNAME }}:${{ secrets.FTP_PASSWORD }} ftp://win1020.site4now.net/wwwroot/app_offline.htm -Q "-DELE wwwroot/app_offline.htm" || true
+          echo "Bringing site back online..."
+          echo "" > empty.html
+          curl -T empty.html -u ${{ secrets.FTP_USERNAME }}:${{ secrets.FTP_PASSWORD }} ftp://win1020.site4now.net/wwwroot/app_offline.htm
+          curl -u ${{ secrets.FTP_USERNAME }}:${{ secrets.FTP_PASSWORD }} ftp://win1020.site4now.net/wwwroot/app_offline.htm -Q "-DELE app_offline.htm" || true
