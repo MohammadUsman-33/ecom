@@ -33,7 +33,7 @@ jobs:
 
       # 4️⃣ Deploy all application files to /ecom/ with retry for locked files
       - name: Deploy Application
-        uses: SamKirkland/FTP-Deploy-Action@v4
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
@@ -46,7 +46,7 @@ jobs:
 
       # 5️⃣ Remove maintenance page to bring site back online
       - name: Remove Maintenance Page
-        uses: SamKirkland/FTP-Deploy-Action@v4
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
