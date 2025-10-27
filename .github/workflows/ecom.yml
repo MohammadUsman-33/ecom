@@ -12,7 +12,7 @@ jobs:
       publish-artifact-name: publish-artifact
 
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Setup .NET 8.0 SDK
@@ -46,21 +46,23 @@ jobs:
           name: publish-artifact
           path: ./publish/
 
-      # Step 1: Place maintenance page
-      - name: Create maintenance page
-        run: echo '<html><body><h1>Maintenance: Site is temporarily offline.</h1></body></html>' > app_offline.htm
+      # Step 1: Put site offline
+      - name: Prepare maintenance page
+        run: |
+          mkdir -p app_offline
+          echo '<html><body><h1>Maintenance: Site is temporarily offline.</h1></body></html>' > app_offline/app_offline.htm
 
-      - name: Upload maintenance page to site root
+      - name: Upload maintenance page to take site offline
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
           server: win1020.site4now.net
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./app_offline.htm
-          server-dir: /ecom/   # Root of your IIS site
+          local-dir: ./app_offline/
+          server-dir: /ecom/
 
       # Step 2: Deploy published files
-      - name: Deploy published files to site
+      - name: Deploy published files
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
           server: win1020.site4now.net
@@ -69,16 +71,17 @@ jobs:
           local-dir: ./publish/
           server-dir: /ecom/
 
-      # Step 3: Remove maintenance page
-      - name: Remove maintenance page
+      # Step 3: Remove maintenance page to bring site online
+      - name: Remove local maintenance folder
+        run: rm -rf app_offline
+
+      - name: Remove maintenance page from server
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
           server: win1020.site4now.net
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./empty/  # Create an empty folder locally
+          local-dir: ./publish/   # folder with real site files
           server-dir: /ecom/
-          dangerous-clean-slate: true   # ONLY removes app_offline.htm
+          dangerous-clean-slate: false  # keep files, just sync
 
-      - name: Clean up local files
-        run: rm -f app_offline.htm
