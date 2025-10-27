@@ -22,7 +22,7 @@ jobs:
         run: |
           dotnet restore ecom.sln
           dotnet build ecom.sln --configuration Release --no-restore
-          dotnet publish ecom/ecom.csproj --configuration Release --output ./ecom-publish/
+          dotnet publish ecom/ecom.csproj --configuration Release --output ./publish/
 
       # Step 1: Create temporary maintenance page
       - name: Prepare App_Offline.htm
@@ -41,39 +41,37 @@ jobs:
           server-dir: /ecom/
           dangerous-clean-slate: false
 
-      # Step 3: Wait for IIS to release file locks
+      # Step 3: Wait for IIS to release locks
       - name: Wait 5 seconds
         run: sleep 5
 
-      # Step 4: Deploy published files
+      # Step 4: Deploy /ecom/ files
       - name: Deploy /ecom/ files
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
           server: win1020.site4now.net
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./ecom-publish/
+          local-dir: ./publish/
           server-dir: /ecom/
           dangerous-clean-slate: false
 
-      # Step 5: Remove App_Offline.htm to bring site back online
-      - name: Remove App_Offline.htm
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.6
-        with:
-          server: win1020.site4now.net
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./ecom-offline/
-          server-dir: /ecom/
-          dangerous-clean-slate: false
-          delete: true
+      # Step 5: Retry removing App_Offline.htm to bring site back online
+      - name: Remove App_Offline.htm with retry
+        run: |
+          for i in {1..5}; do
+            echo "Attempt $i to delete App_Offline.htm"
+            curl -T ./ecom-offline/App_Offline.htm ftp://win1020.site4now.net/ecom/App_Offline.htm --user ${{ secrets.FTP_USERNAME }}:${{ secrets.FTP_PASSWORD }} --quote "DELE App_Offline.htm" && break
+            sleep 5
+          done
 
-      # Step 6: Deploy /offline-app/ separately (optional)
+      # Step 6: Prepare /offline-app/ folder (optional)
       - name: Prepare offline-app
         run: |
           mkdir -p offline-app
           echo '<html><body><h1>Offline App Placeholder</h1></body></html>' > offline-app/index.html
 
+      # Step 7: Upload /offline-app/ files
       - name: Upload /offline-app/
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
