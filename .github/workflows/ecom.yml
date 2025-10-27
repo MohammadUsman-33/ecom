@@ -12,7 +12,7 @@ jobs:
       publish-artifact-name: publish-artifact
 
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Setup .NET 8.0 SDK
@@ -29,7 +29,7 @@ jobs:
       - name: Publish project
         run: dotnet publish ecom/ecom.csproj --configuration Release --output ./publish/
 
-      - name: Upload publish artifact
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: publish-artifact
@@ -40,29 +40,27 @@ jobs:
     needs: build
 
     steps:
-      - name: Download publish artifact
+      - name: Download published artifact
         uses: actions/download-artifact@v4
         with:
           name: publish-artifact
           path: ./publish/
 
-      # Step 1: Upload maintenance page to take site offline
-      - name: Create app_offline.htm
-        run: |
-          echo '<html><body><h1>Maintenance, please check back soon.</h1></body></html>' > app_offline.htm
+      # Step 1: Place maintenance page
+      - name: Create maintenance page
+        run: echo '<html><body><h1>Maintenance: Site is temporarily offline.</h1></body></html>' > app_offline.htm
 
-      - name: Upload app_offline.htm
+      - name: Upload maintenance page to site root
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
           server: win1020.site4now.net
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./app_offline.htm
-          server-dir: /ecom/app_offline.htm
-          dangerous-clean-slate: false
+          server-dir: /ecom/   # Root of your IIS site
 
-      # Step 2: Deploy published files safely
-      - name: Deploy published files
+      # Step 2: Deploy published files
+      - name: Deploy published files to site
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
           server: win1020.site4now.net
@@ -70,19 +68,17 @@ jobs:
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./publish/
           server-dir: /ecom/
-          dangerous-clean-slate: false
 
-      # Step 3: Remove maintenance page to bring site back online
-      - name: Remove app_offline.htm from server
+      # Step 3: Remove maintenance page
+      - name: Remove maintenance page
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
           server: win1020.site4now.net
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./  # current folder is fine, no app_offline.htm here
-          server-dir: /ecom/app_offline.htm
-          dangerous-clean-slate: false
+          local-dir: ./empty/  # Create an empty folder locally
+          server-dir: /ecom/
+          dangerous-clean-slate: true   # ONLY removes app_offline.htm
 
-      # Step 4: Cleanup local file
-      - name: Clean up local maintenance file
+      - name: Clean up local files
         run: rm -f app_offline.htm
